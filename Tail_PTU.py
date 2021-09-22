@@ -7,7 +7,7 @@
 # e.g. if your files are not too big. 
 # Otherwise it is best process the data on the fly and keep only the results.
 
-# Purpose: to be able to read previous PTU files to recreate live time trace
+# Purpose: to be able to "tail" PTU files to create a live time trace of photon counts
 # Modified by Brayden Shinkawa
 
 import matplotlib.pyplot as plt
