@@ -29,8 +29,6 @@ MILLISECOND_CONVERSION = float(1.0/MAX_SIZE)
 # this comes out to around 0.1 s per overflow, or 100 ms when OVERFLOW_MAX is 1300
 OVERFLOW_MAX = 1300
 
-# max number of data points on the graph at a time
-
 MAX_HEIGHT = 500
 THOUSAND_MILLISECONDS = 1000
 
