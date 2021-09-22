@@ -72,9 +72,9 @@ global red_lst
 global red_val
 global buffer
 
+# initialize global variables
 ofl = 0
 idx = 0
-# get to the part where it starts reciting numbers at the beginning
 x = []
 green_lst = []
 green_val = 0
@@ -82,14 +82,17 @@ red_lst = []
 red_val = 0
 buffer = Queue()
 
+# initialize subplots for the graph
 fig, ax = plt.subplots()
 
+# if the command doesn't contain both Tail_PTU.py and the PTU file, the command will exit without an output
 if len(sys.argv) != 2:
     print("USAGE: Tail_PTU.py newFile.ptu")
     exit(0)
 
 inputfile = open(sys.argv[1], "rb")
 
+# if the PTU file isn't a PicoQuant PTU file, exit and print error
 magic = inputfile.read(8).decode("utf-8").strip('\0')
 if magic != "PQTTTR":
     print("ERROR: Magic invalid, this is not a PTU file.")
@@ -98,19 +101,16 @@ if magic != "PQTTTR":
 
 inputfile.seek(0, os.SEEK_END) #End-of-file. Next read will get to EOF.
 
+# set up plot's values
 plt.ylim([0, MAX_HEIGHT])
 plt.title('Time Trace Live Plot')
 plt.xlabel('Time [s]')
 plt.ylabel('Counts per 100 ms bin')
 
-# if we split the line and its second item is OFL, add the 4th item to OFL_number value  
-# else split the value between green and red (for now. Figure out the FRET between number later)
-# once OFL amount hits 1300 overflows, append new value totals into y_green and y_red lists
-
-
-
+# Used to animate the graph based off of what is being written into the PTU file
 def animate(i):
     global inputfile, ofl, idx, x, green_lst, green_val, red_lst, red_val, buffer
+    # loop until the inputfile reads a new input
     while True:
         recordData = inputfile.read(4)
         if not recordData:
@@ -133,7 +133,7 @@ def animate(i):
                 else:
                     ofl += nsync
             if ofl >= OVERFLOW_MAX: # once the overflow amount is over a threshold,
-                # plot the values presented on the graph
+                # add the values into the graph's lists
                 x.append(float(idx*MILLISECOND_CONVERSION))
                 x = x[-MAX_SIZE:]
 
@@ -142,7 +142,8 @@ def animate(i):
 
                 red_lst.append(red_val)
                 red_lst = red_lst[-MAX_SIZE:]
-
+                
+                # draw new graph frame
                 plt.cla()
                 plt.ylim([0, MAX_HEIGHT])
                 plt.title('Live Time Trace')
@@ -150,7 +151,8 @@ def animate(i):
                 plt.ylabel('Counts per 100 ms bin')
                 plt.plot(x, green_lst, 'g-')
                 plt.plot(x, red_lst, 'r-')
-
+                
+                # reset the values, and finish the function call
                 ofl = 0
                 green_val = 0
                 red_val = 0
@@ -163,6 +165,7 @@ def animate(i):
             elif int(channel) == RED:
                 red_val += 1
 
+# FuncAnimation calls animate for the figure that was passed into it at every interval
 ani = animation.FuncAnimation(fig, animate, interval=THOUSAND_MILLISECONDS / 10000.0)
 
 plt.show()
