@@ -12,6 +12,7 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import numpy as np
 import sys
 import struct
 import os
@@ -22,66 +23,43 @@ GREEN = 2
 RED = 1
 
 # number of data points allowed on the graph
-MAX_SIZE = 10
+MAX_SIZE = 100
 MILLISECOND_CONVERSION = float(1.0/MAX_SIZE) 
 # number of overflows needed before plotting on graph
 # calculation being done is 75 ns * 1023 (number of bits in nsync) * OVERFLOW_MAX
 # this comes out to around 0.1 s per overflow, or 100 ms when OVERFLOW_MAX is 1300
 OVERFLOW_MAX = 1300
-
-MAX_HEIGHT = 500
+MAX_HEIGHT = 10**3
 THOUSAND_MILLISECONDS = 1000
-
-# Tag Types
-tyEmpty8      = struct.unpack(">i", bytes.fromhex("FFFF0008"))[0]
-tyBool8       = struct.unpack(">i", bytes.fromhex("00000008"))[0]
-tyInt8        = struct.unpack(">i", bytes.fromhex("10000008"))[0]
-tyBitSet64    = struct.unpack(">i", bytes.fromhex("11000008"))[0]
-tyColor8      = struct.unpack(">i", bytes.fromhex("12000008"))[0]
-tyFloat8      = struct.unpack(">i", bytes.fromhex("20000008"))[0]
-tyTDateTime   = struct.unpack(">i", bytes.fromhex("21000008"))[0]
-tyFloat8Array = struct.unpack(">i", bytes.fromhex("2001FFFF"))[0]
-tyAnsiString  = struct.unpack(">i", bytes.fromhex("4001FFFF"))[0]
-tyWideString  = struct.unpack(">i", bytes.fromhex("4002FFFF"))[0]
-tyBinaryBlob  = struct.unpack(">i", bytes.fromhex("FFFFFFFF"))[0]
-
-# Record types
-rtPicoHarpT3     = struct.unpack(">i", bytes.fromhex('00010303'))[0]
-rtPicoHarpT2     = struct.unpack(">i", bytes.fromhex('00010203'))[0]
-rtHydraHarpT3    = struct.unpack(">i", bytes.fromhex('00010304'))[0]
-rtHydraHarpT2    = struct.unpack(">i", bytes.fromhex('00010204'))[0]
-rtHydraHarp2T3   = struct.unpack(">i", bytes.fromhex('01010304'))[0]
-rtHydraHarp2T2   = struct.unpack(">i", bytes.fromhex('01010204'))[0]
-rtTimeHarp260NT3 = struct.unpack(">i", bytes.fromhex('00010305'))[0]
-rtTimeHarp260NT2 = struct.unpack(">i", bytes.fromhex('00010205'))[0]
-rtTimeHarp260PT3 = struct.unpack(">i", bytes.fromhex('00010306'))[0]
-rtTimeHarp260PT2 = struct.unpack(">i", bytes.fromhex('00010206'))[0]
-rtMultiHarpT3    = struct.unpack(">i", bytes.fromhex('00010307'))[0]
-rtMultiHarpT2    = struct.unpack(">i", bytes.fromhex('00010207'))[0]
 
 # global variables
 global inputfile
 global x
 global ofl
-global idx
 global green_lst
 global green_val
+global green_line
 global red_lst
 global red_val
+global red_line
 global buffer
+global lines
+
+# initialize subplots for the graph
+fig, ax = plt.subplots()
 
 # initialize global variables
 ofl = 0
 idx = 0
-x = []
-green_lst = []
+x = list(np.arange(MAX_SIZE/10, 0, -0.1))
+green_lst = [1] * MAX_SIZE
 green_val = 0
-red_lst = []
+green_line, = ax.plot(x, green_lst, 'g-')
+red_lst = [1] * MAX_SIZE
 red_val = 0
+red_line, = ax.plot(x, red_lst, 'r-')
+lines = [red_line, green_line]
 buffer = Queue()
-
-# initialize subplots for the graph
-fig, ax = plt.subplots()
 
 # if the command doesn't contain both Tail_PTU.py and the PTU file, the command will exit without an output
 if len(sys.argv) != 2:
@@ -100,14 +78,16 @@ if magic != "PQTTTR":
 inputfile.seek(0, os.SEEK_END) #End-of-file. Next read will get to EOF.
 
 # set up plot's values
-plt.ylim([0, MAX_HEIGHT])
 plt.title('Time Trace Live Plot')
 plt.xlabel('Time [s]')
 plt.ylabel('Counts per 100 ms bin')
+plt.grid()
+plt.yscale('log')
+ax.set_ylim([1, MAX_HEIGHT])
 
 # Used to animate the graph based off of what is being written into the PTU file
 def animate(i):
-    global inputfile, ofl, idx, x, green_lst, green_val, red_lst, red_val, buffer
+    global ofl, green_lst, green_val, red_lst, red_val, buffer, lines
     # loop until the inputfile reads a new input
     while True:
         recordData = inputfile.read(4)
@@ -132,8 +112,6 @@ def animate(i):
                     ofl += nsync
             if ofl >= OVERFLOW_MAX: # once the overflow amount is over a threshold,
                 # add the values into the graph's lists
-                x.append(float(idx*MILLISECOND_CONVERSION))
-                x = x[-MAX_SIZE:]
 
                 green_lst.append(green_val)
                 green_lst = green_lst[-MAX_SIZE:]
@@ -142,21 +120,13 @@ def animate(i):
                 red_lst = red_lst[-MAX_SIZE:]
                 
                 # draw new graph frame
-                plt.cla()
-                plt.ylim([0, MAX_HEIGHT])
-                plt.title('Live Time Trace')
-                plt.xlabel('Time [s]')
-                plt.ylabel('Counts per 100 ms bin')
-                plt.plot(x, green_lst, 'g-')
-                plt.plot(x, red_lst, 'r-')
-                
+                lines[RED-1].set_data(x, red_lst)
+                lines[GREEN-1].set_data(x, green_lst)
                 # reset the values, and finish the function call
                 ofl = 0
                 green_val = 0
                 red_val = 0
-
-                idx += 1
-                break
+                return lines
         else: # regular input channel to count 100 ms bins
             if int(channel) == GREEN:
                 green_val += 1
@@ -164,7 +134,7 @@ def animate(i):
                 red_val += 1
 
 # FuncAnimation calls animate for the figure that was passed into it at every interval
-ani = animation.FuncAnimation(fig, animate, interval=THOUSAND_MILLISECONDS / 10000.0)
+ani = animation.FuncAnimation(fig, animate, interval=THOUSAND_MILLISECONDS / 10000.0, blit=True)
 
 plt.show()
 inputfile.close()
