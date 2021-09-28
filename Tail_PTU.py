@@ -126,12 +126,13 @@ def animate(i):
                 ofl = 0
                 green_val = 0
                 red_val = 0
-                return lines
+                break
         else: # regular input channel to count 100 ms bins
             if int(channel) == GREEN:
                 green_val += 1
             elif int(channel) == RED:
                 red_val += 1
+    return lines
 
 # FuncAnimation calls animate for the figure that was passed into it at every interval
 ani = animation.FuncAnimation(fig, animate, interval=THOUSAND_MILLISECONDS / 10000.0, blit=True)
