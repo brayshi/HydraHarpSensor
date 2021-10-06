@@ -272,7 +272,7 @@ def animate(buffer, red_trace, green_trace, red_hist, green_hist):
     return red_trace, green_trace, red_hist, green_hist
 
 update = partial(animate, red_trace=red_trace, green_trace=green_trace, red_hist=red_hist, green_hist=green_hist)
-init = partial(init_fig, fig=fig, trace_ax=trace_ax, hist_ax=hist_ax, artists=(red_trace,green_trace))
+init = partial(init_fig, fig=fig, trace_ax=trace_ax, hist_ax=hist_ax, artists=(red_trace,green_trace,red_hist,green_hist))
 
 axbox = fig.add_axes([0.1, 0.05, 0.4, 0.05])
 text_box = widget.TextBox(axbox, "Trace Height")
