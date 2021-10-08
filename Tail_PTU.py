@@ -121,6 +121,7 @@ while True:
 
 tagNames = [tagDataList[i][0] for i in range(0, len(tagDataList))]
 tagValues = [tagDataList[i][1] for i in range(0, len(tagDataList))]
+
 globRes = float(1/tagValues[tagNames.index("TTResult_SyncRate")]) # the period of the histogram
 measDescRes = tagValues[tagNames.index("MeasDesc_Resolution")] # the resolution of the measurements being done for each dtime
 
