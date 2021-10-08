@@ -1,7 +1,6 @@
 # Modified code from PicoQuant
 # Keno Goertz, PicoQUant GmbH, February 2018
 
-# T Mode data are written to an output file [filename]
 # We do not keep it in memory because of the huge amout of memory
 # this would take in case of large files. Of course you can change this, 
 # e.g. if your files are not too big. 
@@ -122,7 +121,6 @@ while True:
 tagNames = [tagDataList[i][0] for i in range(0, len(tagDataList))]
 tagValues = [tagDataList[i][1] for i in range(0, len(tagDataList))]
 
-globRes = float(1/tagValues[tagNames.index("TTResult_SyncRate")]) # the period of the histogram
 measDescRes = tagValues[tagNames.index("MeasDesc_Resolution")] # the resolution of the measurements being done for each dtime
 
 inputfile.seek(0, os.SEEK_END) #End-of-file. Next read will get to EOF.
@@ -144,10 +142,10 @@ HIST_HEIGHT = 1e5
 THOUSAND_MILLISECONDS = 1000
 
 # number of data points allowed on the graph
-BIN_INPUT = 64 * 1e-12
-FOUR_PICO_MULTIPLE = int(BIN_INPUT / measDescRes)
-binSize = measDescRes*FOUR_PICO_MULTIPLE # 4 ps * 16 = 64 ps bins
-NUM_BINS = int(-(globRes // -binSize)) # "ceiling" division for number of bins needed
+MAX_DTIME = 2**15-1
+BIN_INPUT = 64
+binMultiple = int(-(BIN_INPUT / -(measDescRes * 1e12))) # BIN_INPUT / 4 = 16x larger bins
+NUM_BINS = int(-(MAX_DTIME // -binMultiple)) # "ceiling" division for number of bins needed
 
 # global variables
 global ofl
@@ -171,7 +169,7 @@ green_trace, = trace_ax.plot(x, green_lst, 'g-')
 red_lst = np.ones(TRACE_SIZE, dtype=np.uint32, order='C')
 red_trace, = trace_ax.plot(x, red_lst, 'r-')
 
-HIST_BINS = np.linspace(0, globRes*1e9, num=NUM_BINS, endpoint=True)
+HIST_BINS = np.linspace(0, MAX_DTIME * measDescRes * 1e9, num=NUM_BINS, endpoint=True)
 green_bins = np.ones(NUM_BINS, dtype=np.uint32, order='C')
 green_hist, = hist_ax.plot(HIST_BINS, green_bins, 'g-')
 red_bins = np.ones(NUM_BINS, dtype=np.uint32, order='C')
@@ -194,11 +192,11 @@ def init_fig(fig, trace_ax, hist_ax, artists):
     # set up hist's values
     hist_ax.set_title('HIstogram Live Plot')
     hist_ax.set_xlabel('Time [ns]')
-    hist_ax.set_ylabel('Counts per {size} ps bin'.format(size = int(binSize*1e12)))
+    hist_ax.set_ylabel('Counts per {size} ps bin'.format(size = int(BIN_INPUT)))
     hist_ax.grid(True)
     hist_ax.semilogy()
     hist_ax.set_ylim([10, HIST_HEIGHT])
-    hist_ax.set_xlim([0, globRes*1e9])
+    hist_ax.set_xlim([0, 100])
 
     return artists
 
@@ -250,7 +248,7 @@ def animate(buffer, red_trace, green_trace, red_hist, green_hist):
                 break
         else: # regular input channel to count 100 ms bins
             trace_indx = int(ofl // TRACE_OVERFLOW)
-            hist_indx = int((dtime * measDescRes)//binSize)-1 # this bins out where the dtime corresponds to and which bin it should go into (by dividing it into binSize)
+            hist_indx = int((dtime * measDescRes * 1e12)//BIN_INPUT)-1 # this bins out where the dtime corresponds to and which bin it should go into (by dividing it into binSize)
             if int(channel) == GREEN:
                 green_bins[hist_indx] += 1
                 green_lst[trace_indx] += 1
