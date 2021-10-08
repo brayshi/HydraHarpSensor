@@ -62,6 +62,8 @@ if magic != "PQTTTR":
     inputfile.close()
     exit(0)
 
+version = inputfile.read(8).decode("utf-8").strip('\0')
+
 tagDataList = []    # Contains tuples of (tagName, tagValue)
 while True:
     tagIdent = inputfile.read(32).decode("utf-8").strip('\0')
@@ -119,22 +121,8 @@ while True:
 
 tagNames = [tagDataList[i][0] for i in range(0, len(tagDataList))]
 tagValues = [tagDataList[i][1] for i in range(0, len(tagDataList))]
-globRes = tagValues[tagNames.index("MeasDesc_GlobalResolution")] # the period of the histogram
+globRes = float(1/tagValues[tagNames.index("TTResult_SyncRate")]) # the period of the histogram
 measDescRes = tagValues[tagNames.index("MeasDesc_Resolution")] # the resolution of the measurements being done for each dtime
-
-# if the command doesn't contain both Tail_PTU.py and the PTU file, the command will exit without an output
-if len(sys.argv) != 2:
-    print("USAGE: Tail_PTU.py newFile.ptu")
-    exit(0)
-
-inputfile = open(sys.argv[1], "rb")
-
-# if the PTU file isn't a PicoQuant PTU file, exit and print error
-magic = inputfile.read(8).decode("utf-8").strip('\0')
-if magic != "PQTTTR":
-    print("ERROR: Magic invalid, this is not a PTU file.")
-    inputfile.close()
-    exit(0)
 
 inputfile.seek(0, os.SEEK_END) #End-of-file. Next read will get to EOF.
 
@@ -272,7 +260,7 @@ def animate(buffer, red_trace, green_trace, red_hist, green_hist):
     return red_trace, green_trace, red_hist, green_hist
 
 update = partial(animate, red_trace=red_trace, green_trace=green_trace, red_hist=red_hist, green_hist=green_hist)
-init = partial(init_fig, fig=fig, trace_ax=trace_ax, hist_ax=hist_ax, artists=(red_trace,green_trace))
+init = partial(init_fig, fig=fig, trace_ax=trace_ax, hist_ax=hist_ax, artists=(red_trace,green_trace,red_hist,green_hist))
 
 axbox = fig.add_axes([0.1, 0.05, 0.4, 0.05])
 text_box = widget.TextBox(axbox, "Trace Height")

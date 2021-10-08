@@ -73,6 +73,8 @@ if magic != "PQTTTR":
     inputfile.close()
     exit(0)
 
+version = inputfile.read(8).decode("utf-8").strip('\0')
+
 tagDataList = []    # Contains tuples of (tagName, tagValue)
 while True:
     tagIdent = inputfile.read(32).decode("utf-8").strip('\0')
