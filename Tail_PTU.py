@@ -132,6 +132,7 @@ global red_lst
 global green_bins
 global red_bins
 global TRACE_SIZE
+global TRACE_OVERFLOW
 
 # channel numbers
 GREEN = 2
@@ -159,8 +160,6 @@ MAX_DTIME = 2**15-1
 binMultiple = int(-(BIN_INPUT / -(measDescRes * 1e12))) # BIN_INPUT / 4 = 16x larger bins
 NUM_BINS = int(-(MAX_DTIME // -binMultiple)) # "ceiling" division for number of bins needed
 
-
-
 # initialize subplots for the graph
 fig, (trace_ax, hist_ax) = plt.subplots(1, 2)
 plt.subplots_adjust(left=0.1, right = 0.9, top=0.9, bottom=0.2)
@@ -168,8 +167,6 @@ plt.subplots_adjust(left=0.1, right = 0.9, top=0.9, bottom=0.2)
 fig.canvas.mpl_disconnect(fig.canvas.manager.key_press_handler_id)
 
 # initialize global variables
-
-
 ofl = 0
 idx = 0
 x = np.arange(0, TRACE_SIZE*np.float16(TRACE_OVERFLOW/13000), np.float16(TRACE_OVERFLOW/13000))
@@ -185,25 +182,32 @@ red_bins = np.ones(NUM_BINS, dtype=np.uint32, order='C')
 red_hist, = hist_ax.plot(HIST_BINS, red_bins, 'r-')
 
 buffer = Queue()
-
+# change the Trace Height with the value given by the trace height text box
 def changeTraceHeight(value):
     TRACE_HEIGHT = int(value)
     trace_ax.set_ylim([1, TRACE_HEIGHT])
 
+# change the Hist Height with the value given by the hist height text box
 def changeHistHeight(value):
     HIST_HEIGHT = 10**int(value)
     hist_ax.set_ylim([10, HIST_HEIGHT])
 
+# change the Trace Size with the value given by the trace size text box
 def changeTraceSize(value):
     global TRACE_SIZE, green_lst, red_lst, x
-    #ani.event_source.stop()
     TRACE_SIZE = int(value)
     max_x = TRACE_SIZE*np.float16(TRACE_OVERFLOW/13000)
     x = np.arange(0, max_x, np.float16(TRACE_OVERFLOW/13000))
     green_lst = np.ones(TRACE_SIZE, dtype=np.uint32, order='C')
     red_lst = np.ones(TRACE_SIZE, dtype=np.uint32, order='C')
-    trace_ax.set_xlim([0, max_x])
-    #ani.event_source.start()
+    trace_ax.set_xlim(0, max_x)
+
+def changeTraceBins(value):
+    global TRACE_OVERFLOW
+    TRACE_OVERFLOW = OVERFLOW_SECOND * 10**int(value) / 1000
+    max_x = TRACE_SIZE*np.float16(TRACE_OVERFLOW/13000)
+    x = np.arange(0, max_x, np.float16(TRACE_OVERFLOW/13000))
+    trace_ax.set_xlim(0, max_x)
 
 # initializes the figure, axis, and passes artists through
 def init_fig(fig, trace_ax, hist_ax, artists):
@@ -253,7 +257,8 @@ def animate(buffer, red_trace, green_trace, red_hist, green_hist):
                 else:
                     ofl += nsync
             # TODO
-            # add an if statement that checks the size of the TRACE_OVERFLOW
+            # add an if statement that checks the size of the TRACE_OVERFLOW to swap between two different algorithms (the rolling one and the updating one)
+            # also remember that if the trace 
             if ofl >= TRACE_OVERFLOW * TRACE_SIZE: # once the overflow amount is over a threshold,
                 # add the values into the graph's lists
                 # draw new trace frame
@@ -270,21 +275,26 @@ def animate(buffer, red_trace, green_trace, red_hist, green_hist):
         else: # regular input channel to count 100 ms bins
             trace_indx = int(ofl // TRACE_OVERFLOW)
             hist_indx = int((dtime * measDescRes * 1e12)//BIN_INPUT)-1 # this bins out where the dtime corresponds to and which bin it should go into (by dividing it into binSize)
-            if int(channel) == GREEN:
-                green_bins[hist_indx] += 1
-                green_lst[trace_indx] += 1
-            elif int(channel) == RED:
-                red_bins[hist_indx] += 1
-                red_lst[trace_indx] += 1
+            if (trace_indx >= np.prod(green_lst.shape)):
+                ofl = 0
+            else:
+                if int(channel) == GREEN:
+                    green_lst[trace_indx] += 1
+                elif int(channel) == RED:
+                    red_lst[trace_indx] += 1
+
+            if (hist_indx >= np.prod(green_bins.shape)):
+                continue
+            else:
+                if int(channel) == GREEN:
+                    green_bins[hist_indx] += 1
+                elif int(channel) == RED:
+                    red_bins[hist_indx] += 1
         
     return red_trace, green_trace, red_hist, green_hist
 
 update = partial(animate, red_trace=red_trace, green_trace=green_trace, red_hist=red_hist, green_hist=green_hist)
 init = partial(init_fig, fig=fig, trace_ax=trace_ax, hist_ax=hist_ax, artists=(red_trace,green_trace,red_hist,green_hist))
-
-
-
-
 
 # FuncAnimation calls animate for the figure that was passed into it at every interval
 ani = animation.FuncAnimation(fig=fig, func=update, frames=frame_iter, init_func = init, interval=THOUSAND_MILLISECONDS/10000.0, blit=True)
@@ -313,6 +323,12 @@ histHeightAx = fig.add_axes([hist_plot_position.x0, WIDGET_Y + WIDGET_HEIGHT * 1
 histHeightBox = widget.TextBox(histHeightAx, "Hist Height 10^")
 histHeightBox.on_submit(changeHistHeight)
 histHeightBox.set_val(5)
+
+# TODO
+# Add a slider to change Trace bin size between [1, 10, and 100]
+traceBinAx = fig.add_axes([trace_plot_position.x0 + WIDGET_WIDTH * 2, WIDGET_Y, WIDGET_WIDTH * 2, WIDGET_HEIGHT])
+traceBinBox = widget.Slider(traceBinAx, "Trace Bin 10^", valmin=0, valmax=2, valinit=0, valstep=1)
+traceBinBox.on_changed(changeTraceBins)
 
 # TODO
 # Add a slider with 4^n for changing Histogram bins. i.e. [4, 16, 64, 256]
