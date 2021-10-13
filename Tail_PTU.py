@@ -209,6 +209,16 @@ def changeTraceBins(value):
     x = np.arange(0, max_x, np.float16(TRACE_OVERFLOW/13000))
     trace_ax.set_xlim(0, max_x)
 
+def changeHistBins(value):
+    global BIN_INPUT, binMultiple, NUM_BINS, HIST_BINS, green_bins, red_bins
+    BIN_INPUT = 4**int(value)
+    binMultiple = int(-(BIN_INPUT / -(measDescRes * 1e12))) # BIN_INPUT / 4 = 16x larger bins
+    NUM_BINS = int(-(MAX_DTIME // -binMultiple)) # "ceiling" division for number of bins needed
+    HIST_BINS = np.linspace(0, MAX_DTIME * measDescRes * 1e9, num=NUM_BINS, endpoint=True)
+    green_bins = np.ones(NUM_BINS, dtype=np.uint32, order='C')
+    red_bins = np.ones(NUM_BINS, dtype=np.uint32, order='C')
+
+
 # initializes the figure, axis, and passes artists through
 def init_fig(fig, trace_ax, hist_ax, artists):
     # set up trace's values
@@ -218,7 +228,6 @@ def init_fig(fig, trace_ax, hist_ax, artists):
     # set up hist's values
     hist_ax.set_title('Histogram Live Plot')
     hist_ax.set_xlabel('Time [ns]')
-    hist_ax.set_ylabel('Counts per {size} ps bin'.format(size = int(BIN_INPUT)))
     hist_ax.grid(True)
     hist_ax.semilogy()
     hist_ax.set_xlim([0, 100])
@@ -309,29 +318,31 @@ hist_plot_position = hist_ax.get_position()
 # Add a slider for changing Trace size between 1 -> 10 -> 100
 traceSizeAx = fig.add_axes([trace_plot_position.x0 + WIDGET_WIDTH * 3, WIDGET_Y + WIDGET_HEIGHT * 1.5, WIDGET_WIDTH, WIDGET_HEIGHT])
 traceSizeBox = widget.TextBox(traceSizeAx, "Trace Size ")
-traceSizeBox.on_text_change(changeTraceSize)
+traceSizeBox.on_submit(changeTraceSize)
 traceSizeBox.set_val(100)
 
 # text box to change the trace height
 traceHeightAx = fig.add_axes([trace_plot_position.x0, WIDGET_Y + WIDGET_HEIGHT * 1.5, WIDGET_WIDTH, WIDGET_HEIGHT])
 traceHeightBox = widget.TextBox(traceHeightAx, "Trace Height ")
-traceHeightBox.on_text_change(changeTraceHeight)
+traceHeightBox.on_submit(changeTraceHeight)
 traceHeightBox.set_val(100)
 
 # text box to change the hist height
 histHeightAx = fig.add_axes([hist_plot_position.x0, WIDGET_Y + WIDGET_HEIGHT * 1.5, WIDGET_WIDTH * 1.5, WIDGET_HEIGHT])
 histHeightBox = widget.TextBox(histHeightAx, "Hist Height 10^")
-histHeightBox.on_text_change(changeHistHeight)
+histHeightBox.on_submit(changeHistHeight)
 histHeightBox.set_val(5)
 
-# TODO
-# Add a slider to change Trace bin size between [1, 10, and 100]
+# slider that changes Trace bin size between [1, 10, and 100]
 traceBinAx = fig.add_axes([trace_plot_position.x0 + WIDGET_WIDTH * 2, WIDGET_Y, WIDGET_WIDTH * 2, WIDGET_HEIGHT])
 traceBinSlider = widget.Slider(traceBinAx, "Trace Bin 10^", valmin=0, valmax=2, valinit=0, valstep=1)
 traceBinSlider.on_changed(changeTraceBins)
 
 # TODO
-# Add a slider with 4^n for changing Histogram bins. i.e. [4, 16, 64, 256]
+# Add a slider with 4^n for changing Histogram bins. i.e. [16, 64, 256]
+histBinAx = fig.add_axes([hist_plot_position.x0, WIDGET_Y, WIDGET_WIDTH * 2, WIDGET_HEIGHT])
+histBinSlider = widget.Slider(histBinAx, "Hist Bin 4^", valmin=2, valmax=4, valinit=2, valstep=1)
+histBinSlider.on_changed(changeHistBins)
 
 # TODO
 # Add a cursor widget for selecting the four cursor lines alongside a button that resets the cursor positions
