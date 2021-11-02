@@ -81,8 +81,9 @@ class Trace():
 
     def change_traces(self):
         self._period = np.arange(0, self.period_milliseconds / CONVERT_SECONDS, step=self.bin_size_milliseconds / CONVERT_SECONDS)
-        self._green_line = np.ones(self.period_milliseconds//self.bin_size_milliseconds, dtype=np.uint32, order='C')
-        self._red_line = np.ones(self.period_milliseconds//self.bin_size_milliseconds, dtype=np.uint32, order='C')
+        self._green_line = np.ones(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
+        self._red_line = np.ones(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
+        self._fret_line = np.zeros(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
 
     def __init__(self):
         super().__init__()
@@ -93,5 +94,15 @@ class Trace():
         self._bin_size_milliseconds = 1 # only 3 choices will be 1, 10, and 100 ms
         self._bin_size_milliseconds_next = 1 # the next bin size in milliseconds that will be used
         self._period = np.arange(0, self._period_milliseconds / CONVERT_SECONDS, step=self._bin_size_milliseconds / CONVERT_SECONDS)
-        self._green_line = np.ones(self._period_milliseconds//self._bin_size_milliseconds, dtype=np.uint32, order='C')
-        self._red_line = np.ones(self._period_milliseconds//self._bin_size_milliseconds, dtype=np.uint32, order='C')
+        self._green_line = np.zeros(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
+        self._red_line = np.zeros(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
+        
+        # fret variables
+        self._DA_range = np.array([0, 2**15 - 1])
+
+        self._fret_line = np.zeros(int(-(self._period_milliseconds//-self._bin_size_milliseconds)), dtype=np.uint32, order='C')
+
+        # these check if the traces will be used
+        self._green_on = True
+        self._red_on = True
+        self._fret_on = False

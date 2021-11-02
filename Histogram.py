@@ -73,3 +73,7 @@ class Histogram:
         self._period = np.linspace(0, HIST_BIN_AMOUNT * self.measDescRes * 1e9, num=num_bins, endpoint=True)
         self._green_bins = np.ones(num_bins, dtype=np.uint32, order='C')
         self._red_bins = np.ones(num_bins, dtype=np.uint32, order='C')
+
+        # for fret signals (if red is in green range, then consider it a fret)
+        self._green_range = np.array([0.0, 75.0])
+        self._red_range = np.array([0.0, 75.0])
